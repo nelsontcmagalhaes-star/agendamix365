@@ -23,6 +23,7 @@ import '../features/financial/entry_form_screen.dart';
 import '../features/financial/credit_card_form_screen.dart';
 import '../features/capture/capture_screen.dart';
 import '../features/documents/documents_screen.dart';
+import '../features/search/search_screen.dart';
 import '../shared/widgets/main_scaffold.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -143,6 +144,11 @@ final appRouter = GoRouter(
       path: '/capture',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (c, s) => const CaptureScreen(),
+    ),
+    GoRoute(
+      path: '/search',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (c, s) => const SearchScreen(),
     ),
     GoRoute(path: '/auth/login', builder: (c, s) => const LoginScreen()),
     GoRoute(path: '/auth/register', builder: (c, s) => const RegisterScreen()),

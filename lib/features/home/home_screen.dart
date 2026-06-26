@@ -19,6 +19,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<ReminderModel> _todayReminders = [];
   List<SpecialDateModel> _upcomingDates = [];
   List<MedicationModel> _medications = [];
+  double _todayIncome = 0;
+  double _todayExpense = 0;
   bool _loading = true;
 
   @override
@@ -64,17 +66,37 @@ class _HomeScreenState extends State<HomeScreen> {
           .eq('is_active', true)
           .limit(5);
 
+      final finRes = await supabase
+          .from('financial_entries')
+          .select('value, type')
+          .eq('user_id', uid)
+          .gte('date', todayStart.toIso8601String())
+          .lt('date', todayEnd.toIso8601String());
+
       final specialRes = await supabase
           .from('special_dates')
           .select()
           .eq('user_id', uid)
           .eq('alert_enabled', true);
 
+      double income = 0;
+      double expense = 0;
+      for (final f in finRes as List) {
+        final val = (f['value'] as num).toDouble();
+        if (f['type'] == 'receita') {
+          income += val;
+        } else {
+          expense += val;
+        }
+      }
+
       if (mounted) {
         setState(() {
           _todayAppointments = (apptRes as List).map((e) => AppointmentModel.fromJson(e)).toList();
           _todayReminders = (remRes as List).map((e) => ReminderModel.fromJson(e)).toList();
           _medications = (medRes as List).map((e) => MedicationModel.fromJson(e)).toList();
+          _todayIncome = income;
+          _todayExpense = expense;
           final allDates = (specialRes as List).map((e) => SpecialDateModel.fromJson(e)).toList();
           _upcomingDates = allDates
               .where((d) => d.daysUntilNext() <= 7)
@@ -352,30 +374,62 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFinancialSummary() {
+    final balance = _todayIncome - _todayExpense;
+    final isPositive = balance >= 0;
     return AppCard(
       onTap: () => context.go('/financial'),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.greenLight.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.account_balance_wallet_rounded, color: AppColors.greenMedium),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.greenLight.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.account_balance_wallet_rounded, color: AppColors.greenMedium, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text('Resumo de hoje', style: Theme.of(context).textTheme.titleMedium),
+              const Spacer(),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.greyMedium),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Financeiro', style: Theme.of(context).textTheme.titleMedium),
-                Text('Toque para ver resumo', style: Theme.of(context).textTheme.bodyMedium),
-              ],
-            ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _FinancialMiniCard(
+                  label: 'Receitas',
+                  value: _todayIncome,
+                  color: AppColors.greenMedium,
+                  icon: Icons.trending_up_rounded,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _FinancialMiniCard(
+                  label: 'Despesas',
+                  value: _todayExpense,
+                  color: AppColors.error,
+                  icon: Icons.trending_down_rounded,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _FinancialMiniCard(
+                  label: 'Saldo',
+                  value: balance.abs(),
+                  color: isPositive ? AppColors.greenMedium : AppColors.error,
+                  icon: isPositive ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                  prefix: isPositive ? '+' : '-',
+                ),
+              ),
+            ],
           ),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.greyMedium),
         ],
       ),
     );
@@ -383,9 +437,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _capitalize(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
-  void _showSearch() {
-    showSearch(context: context, delegate: _UniversalSearch());
-  }
+  void _showSearch() => context.push('/search');
 
   void _showProfile() {
     showModalBottomSheet(
@@ -396,6 +448,57 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => _ProfileSheet(),
+    );
+  }
+}
+
+class _FinancialMiniCard extends StatelessWidget {
+  final String label;
+  final double value;
+  final Color color;
+  final IconData icon;
+  final String prefix;
+
+  const _FinancialMiniCard({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+    this.prefix = '',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$prefix${AppFormatters.formatCurrency(value)}',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -558,96 +661,6 @@ class _ReminderTileState extends State<_ReminderTile> {
         .update({'is_done': _done})
         .eq('id', widget.reminder.id);
     widget.onToggle();
-  }
-}
-
-class _UniversalSearch extends SearchDelegate<String> {
-  @override
-  String get searchFieldLabel => 'Buscar compromissos, notas, pessoas...';
-
-  @override
-  List<Widget> buildActions(BuildContext context) => [
-    IconButton(icon: const Icon(Icons.clear), onPressed: () => query = ''),
-  ];
-
-  @override
-  Widget buildLeading(BuildContext context) => IconButton(
-    icon: const Icon(Icons.arrow_back_rounded),
-    onPressed: () => close(context, ''),
-  );
-
-  @override
-  Widget buildResults(BuildContext context) => _buildSuggestions(context);
-
-  @override
-  Widget buildSuggestions(BuildContext context) => _buildSuggestions(context);
-
-  Widget _buildSuggestions(BuildContext context) {
-    if (query.isEmpty) {
-      return const Center(
-        child: Text('Digite para buscar', style: TextStyle(color: AppColors.greyMedium)),
-      );
-    }
-    return FutureBuilder(
-      future: _search(query),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        final results = snapshot.data as List<Map<String, dynamic>>;
-        if (results.isEmpty) {
-          return const Center(child: Text('Nenhum resultado encontrado'));
-        }
-        return ListView.builder(
-          itemCount: results.length,
-          itemBuilder: (context, i) {
-            final item = results[i];
-            return ListTile(
-              leading: Icon(item['icon'] as IconData, color: AppColors.greenMedium),
-              title: Text(item['title'] as String),
-              subtitle: Text(item['subtitle'] as String),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<List<Map<String, dynamic>>> _search(String q) async {
-    final uid = SupabaseService.currentUserId;
-    if (uid == null) return [];
-    final lower = q.toLowerCase();
-    final results = <Map<String, dynamic>>[];
-
-    final appts = await supabase
-        .from('appointments')
-        .select('title, start_time')
-        .eq('user_id', uid)
-        .ilike('title', '%$lower%')
-        .limit(5);
-    for (final a in appts) {
-      results.add({'icon': Icons.event_rounded, 'title': a['title'], 'subtitle': 'Compromisso'});
-    }
-
-    final notes = await supabase
-        .from('notes')
-        .select('title, category')
-        .eq('user_id', uid)
-        .ilike('title', '%$lower%')
-        .limit(5);
-    for (final n in notes) {
-      results.add({'icon': Icons.note_rounded, 'title': n['title'], 'subtitle': 'Nota'});
-    }
-
-    final people = await supabase
-        .from('people')
-        .select('name, relationship')
-        .eq('user_id', uid)
-        .ilike('name', '%$lower%')
-        .limit(5);
-    for (final p in people) {
-      results.add({'icon': Icons.person_rounded, 'title': p['name'], 'subtitle': 'Pessoa'});
-    }
-
-    return results;
   }
 }
 

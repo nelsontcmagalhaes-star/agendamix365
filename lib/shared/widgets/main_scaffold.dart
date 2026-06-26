@@ -15,9 +15,15 @@ class MainScaffold extends StatelessWidget {
     return 0;
   }
 
+  bool _isHome(BuildContext context) {
+    return GoRouterState.of(context).matchedLocation == '/';
+  }
+
   @override
   Widget build(BuildContext context) {
     final index = _currentIndex(context);
+    // A home já tem sua própria AppBar com pesquisa; nas demais telas
+    // adicionamos um botão de pesquisa global na Scaffold usando um overlay.
     return Scaffold(
       body: child,
       bottomNavigationBar: _BottomBar(currentIndex: index),

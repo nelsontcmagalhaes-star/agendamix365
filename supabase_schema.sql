@@ -259,6 +259,22 @@ CREATE POLICY "Users can delete own documents" ON storage.objects
   FOR DELETE USING (bucket_id = 'documents' AND auth.uid()::text = (storage.foldername(name))[1]);
 
 -- =============================================
+-- MEDICATION LOGS (Registro de doses tomadas)
+-- =============================================
+CREATE TABLE IF NOT EXISTS medication_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  medication_id UUID NOT NULL REFERENCES medications(id) ON DELETE CASCADE,
+  taken_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  scheduled_time TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE medication_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own medication_logs" ON medication_logs
+  FOR ALL USING (auth.uid() = user_id);
+
+-- =============================================
 -- INDEXES para performance
 -- =============================================
 CREATE INDEX IF NOT EXISTS idx_appointments_user_date ON appointments (user_id, start_time);
@@ -267,3 +283,5 @@ CREATE INDEX IF NOT EXISTS idx_notes_user ON notes (user_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_special_dates_user ON special_dates (user_id, month, day);
 CREATE INDEX IF NOT EXISTS idx_financial_entries_user_date ON financial_entries (user_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_medications_user ON medications (user_id, name);
+CREATE INDEX IF NOT EXISTS idx_medication_logs_user ON medication_logs (user_id, taken_at DESC);
+CREATE INDEX IF NOT EXISTS idx_medication_logs_med ON medication_logs (medication_id, taken_at DESC);

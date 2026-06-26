@@ -23,6 +23,8 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
   DateTime _date = DateTime.now();
   bool _isPaid = false;
   int? _installments;
+  String? _creditCardId;
+  List<Map<String, dynamic>> _cards = [];
   bool _loading = false;
 
   static const _incomeCategories = ['Salário', 'Freelance', 'Investimento', 'Outros'];
@@ -33,7 +35,23 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
   @override
   void initState() {
     super.initState();
+    _loadCards();
     if (widget.entryId != null) _load();
+  }
+
+  Future<void> _loadCards() async {
+    final uid = SupabaseService.currentUserId;
+    if (uid == null) return;
+    try {
+      final res = await supabase
+          .from('credit_cards')
+          .select('id, name, bank')
+          .eq('user_id', uid)
+          .order('name');
+      if (mounted) {
+        setState(() => _cards = List<Map<String, dynamic>>.from(res));
+      }
+    } catch (_) {}
   }
 
   Future<void> _load() async {
@@ -48,6 +66,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
       _date = e.date;
       _isPaid = e.isPaid;
       _installments = e.installments;
+      _creditCardId = e.creditCardId;
     });
   }
 
@@ -73,6 +92,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
       'date': _date.toIso8601String(),
       'is_paid': _isPaid,
       'installments': _installments,
+      'credit_card_id': _creditCardId,
       'notes': _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
     };
     try {
@@ -243,6 +263,27 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
                       onChanged: (v) => setState(() => _installments = v),
                     ),
                   ),
+                  if (_cards.isNotEmpty) ...[
+                    const Divider(height: 0),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.payment_rounded, color: AppColors.greenMedium),
+                      title: const Text('Cartão de crédito'),
+                      trailing: DropdownButton<String?>(
+                        value: _creditCardId,
+                        underline: const SizedBox(),
+                        hint: const Text('Nenhum'),
+                        items: [
+                          const DropdownMenuItem(value: null, child: Text('Nenhum')),
+                          ..._cards.map((c) => DropdownMenuItem(
+                            value: c['id'] as String,
+                            child: Text('${c['name']} (${c['bank']})'),
+                          )),
+                        ],
+                        onChanged: (v) => setState(() => _creditCardId = v),
+                      ),
+                    ),
+                  ],
                 ],
               ],
             ),

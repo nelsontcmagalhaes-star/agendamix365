@@ -498,6 +498,37 @@ class CreditCardModel {
   };
 }
 
+class MedicationLogModel {
+  final String id;
+  final String userId;
+  final String medicationId;
+  final DateTime takenAt;
+  final String scheduledTime;
+
+  const MedicationLogModel({
+    required this.id,
+    required this.userId,
+    required this.medicationId,
+    required this.takenAt,
+    required this.scheduledTime,
+  });
+
+  factory MedicationLogModel.fromJson(Map<String, dynamic> json) => MedicationLogModel(
+    id: json['id'],
+    userId: json['user_id'],
+    medicationId: json['medication_id'],
+    takenAt: DateTime.parse(json['taken_at']),
+    scheduledTime: json['scheduled_time'] ?? '',
+  );
+
+  Map<String, dynamic> toJson() => {
+    'user_id': userId,
+    'medication_id': medicationId,
+    'taken_at': takenAt.toIso8601String(),
+    'scheduled_time': scheduledTime,
+  };
+}
+
 class DocumentModel {
   final String id;
   final String userId;

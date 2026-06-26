@@ -17,11 +17,13 @@ class CreditCardFormScreen extends StatefulWidget {
 class _CreditCardFormScreenState extends State<CreditCardFormScreen> {
   final _nameCtrl = TextEditingController();
   final _bankCtrl = TextEditingController();
-  final _operatorCtrl = TextEditingController();
   final _limitCtrl = TextEditingController();
+  String _operator = 'Visa';
   int _closingDay = 1;
   int _dueDay = 10;
   bool _loading = false;
+
+  static const _operators = ['Visa', 'Mastercard', 'Elo', 'American Express', 'Hipercard', 'Diners', 'Outros'];
 
   int get _bestBuyDay {
     final day = _closingDay + 1;
@@ -40,7 +42,7 @@ class _CreditCardFormScreenState extends State<CreditCardFormScreen> {
     setState(() {
       _nameCtrl.text = c.name;
       _bankCtrl.text = c.bank;
-      _operatorCtrl.text = c.operator;
+      _operator = _operators.contains(c.operator) ? c.operator : 'Outros';
       _limitCtrl.text = c.limit.toStringAsFixed(2).replaceAll('.', ',');
       _closingDay = c.closingDay;
       _dueDay = c.dueDay;
@@ -51,7 +53,6 @@ class _CreditCardFormScreenState extends State<CreditCardFormScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _bankCtrl.dispose();
-    _operatorCtrl.dispose();
     _limitCtrl.dispose();
     super.dispose();
   }
@@ -65,7 +66,7 @@ class _CreditCardFormScreenState extends State<CreditCardFormScreen> {
       'user_id': SupabaseService.currentUserId!,
       'name': _nameCtrl.text.trim(),
       'bank': _bankCtrl.text.trim(),
-      'operator': _operatorCtrl.text.trim(),
+      'operator': _operator,
       'limit': limit,
       'closing_day': _closingDay,
       'due_day': _dueDay,
@@ -160,15 +161,16 @@ class _CreditCardFormScreenState extends State<CreditCardFormScreen> {
                   ),
                 ),
                 const Divider(height: 0),
-                TextField(
-                  controller: _operatorCtrl,
-                  textCapitalization: TextCapitalization.words,
+                DropdownButtonFormField<String>(
+                  value: _operator,
                   decoration: const InputDecoration(
-                    hintText: 'Operadora (ex: Visa, Mastercard)',
                     border: InputBorder.none,
                     filled: false,
                     prefixIcon: Icon(Icons.payment_rounded, color: AppColors.greyMedium),
+                    contentPadding: EdgeInsets.symmetric(vertical: 8),
                   ),
+                  items: _operators.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+                  onChanged: (v) => setState(() => _operator = v!),
                 ),
                 const Divider(height: 0),
                 TextField(

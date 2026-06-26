@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
 import '../../core/models.dart';
 import '../../core/supabase_service.dart';
@@ -137,7 +138,7 @@ class _PersonFormScreenState extends State<PersonFormScreen> {
               children: [
                 _FieldRow(icon: Icons.phone_outlined, label: 'Telefone', controller: _phoneCtrl, keyboardType: TextInputType.phone),
                 const Divider(height: 0),
-                _FieldRow(icon: Icons.chat_outlined, label: 'WhatsApp', controller: _whatsappCtrl, keyboardType: TextInputType.phone),
+                _WhatsAppFieldRow(controller: _whatsappCtrl),
                 const Divider(height: 0),
                 _FieldRow(icon: Icons.email_outlined, label: 'E-mail', controller: _emailCtrl, keyboardType: TextInputType.emailAddress),
                 const Divider(height: 0),
@@ -206,6 +207,47 @@ class _FieldRow extends StatelessWidget {
         filled: false,
         prefixIcon: Icon(icon, color: AppColors.greyMedium, size: 20),
       ),
+    );
+  }
+}
+
+class _WhatsAppFieldRow extends StatelessWidget {
+  final TextEditingController controller;
+  const _WhatsAppFieldRow({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        final hasNumber = value.text.trim().isNotEmpty;
+        return Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  hintText: 'WhatsApp',
+                  border: InputBorder.none,
+                  filled: false,
+                  prefixIcon: Icon(Icons.chat_outlined, color: AppColors.greyMedium, size: 20),
+                ),
+              ),
+            ),
+            if (hasNumber)
+              IconButton(
+                icon: const Icon(Icons.open_in_new_rounded, color: Color(0xFF25D366), size: 20),
+                tooltip: 'Abrir no WhatsApp',
+                onPressed: () {
+                  final number = value.text.trim().replaceAll(RegExp(r'[^\d+]'), '');
+                  final url = 'https://wa.me/$number';
+                  launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                },
+              ),
+          ],
+        );
+      },
     );
   }
 }
