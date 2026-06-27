@@ -44,15 +44,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     setState(() { _loading = true; _error = null; });
     try {
-      await SupabaseService.signUp(_emailCtrl.text.trim(), _passCtrl.text, _nameCtrl.text.trim());
+      final response = await SupabaseService.signUp(_emailCtrl.text.trim(), _passCtrl.text, _nameCtrl.text.trim());
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Conta criada! Verifique seu e-mail para confirmar.')),
-        );
-        context.go('/auth/login');
+        // Se session é null, Supabase exige confirmação por e-mail
+        if (response.session == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Conta criada! Confirme seu e-mail para acessar o app.'),
+              duration: Duration(seconds: 5),
+            ),
+          );
+          context.go('/auth/login');
+        } else {
+          // Sessão ativa — login automático após cadastro
+          context.go('/home');
+        }
       }
     } catch (e) {
-      setState(() { _error = 'Não foi possível criar sua conta. Verifique os dados e tente novamente.'; });
+      final msg = e.toString().toLowerCase();
+      String friendlyError;
+      if (msg.contains('already registered') || msg.contains('already exists') || msg.contains('user already')) {
+        friendlyError = 'Este e-mail já está cadastrado. Tente fazer login ou recuperar a senha.';
+      } else if (msg.contains('invalid email') || msg.contains('email inválido')) {
+        friendlyError = 'E-mail inválido. Verifique e tente novamente.';
+      } else if (msg.contains('password') && msg.contains('weak')) {
+        friendlyError = 'Senha muito fraca. Use pelo menos 6 caracteres com letras e números.';
+      } else if (msg.contains('rate limit') || msg.contains('too many')) {
+        friendlyError = 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+      } else if (msg.contains('network') || msg.contains('connection') || msg.contains('socket')) {
+        friendlyError = 'Sem conexão com a internet. Verifique sua rede e tente novamente.';
+      } else if (msg.contains('signup_disabled') || msg.contains('signups not allowed')) {
+        friendlyError = 'Cadastro temporariamente desativado. Entre em contato com o suporte.';
+      } else {
+        friendlyError = 'Não foi possível criar sua conta. Tente novamente.';
+      }
+      setState(() { _error = friendlyError; });
     } finally {
       if (mounted) setState(() { _loading = false; });
     }

@@ -60,23 +60,22 @@ class _CaptureScreenState extends State<CaptureScreen> with SingleTickerProvider
       setState(() => _isListening = false);
     } else {
       setState(() { _isListening = true; _textCtrl.clear(); _detectedType = null; });
+      String _lastWords = '';
       await _speech.listen(
         onResult: (result) {
-          if (result.finalResult) {
-            final text = result.recognizedWords;
+          _lastWords = result.recognizedWords;
+          final text = result.recognizedWords;
+          if (text.isNotEmpty) {
             _textCtrl.value = TextEditingValue(
               text: text,
               selection: TextSelection.collapsed(offset: text.length),
             );
-            setState(() => _partialText = '');
             _analyze(text);
-          } else {
-            setState(() => _partialText = result.recognizedWords);
           }
         },
         localeId: 'pt-BR',
         cancelOnError: false,
-        partialResults: true,
+        partialResults: false,
       );
     }
   }
@@ -266,16 +265,18 @@ class _CaptureScreenState extends State<CaptureScreen> with SingleTickerProvider
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: _isListening && _partialText.isNotEmpty
-                            ? Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: Text(
-                                  _partialText,
-                                  style: const TextStyle(
-                                    color: AppColors.greyMedium,
-                                    fontSize: 16,
-                                    fontStyle: FontStyle.italic,
-                                  ),
+                        child: _isListening
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.hearing_rounded, color: AppColors.greenLight, size: 32),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Ouvindo... fale agora',
+                                      style: const TextStyle(color: AppColors.greyMedium, fontSize: 15, fontStyle: FontStyle.italic),
+                                    ),
+                                  ],
                                 ),
                               )
                             : TextField(
