@@ -63,7 +63,9 @@ class _CaptureScreenState extends State<CaptureScreen> with SingleTickerProvider
         onResult: (result) {
           setState(() => _textCtrl.text = result.recognizedWords);
         },
-        localeId: 'pt_BR',
+        localeId: 'pt-BR',
+        cancelOnError: false,
+        partialResults: true,
       );
     }
   }
