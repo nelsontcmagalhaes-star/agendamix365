@@ -10,3 +10,4 @@
 .idea/
 *.log
 local.properties
+shared_proto_db/
