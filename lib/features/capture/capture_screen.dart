@@ -18,6 +18,7 @@ class _CaptureScreenState extends State<CaptureScreen> with SingleTickerProvider
   bool _isListening = false;
   bool _speechAvailable = false;
   bool _loading = false;
+  String _partialText = '';
   _CaptureType? _detectedType;
   late AnimationController _pulseCtrl;
   late Animation<double> _pulse;
@@ -61,7 +62,17 @@ class _CaptureScreenState extends State<CaptureScreen> with SingleTickerProvider
       setState(() { _isListening = true; _textCtrl.clear(); _detectedType = null; });
       await _speech.listen(
         onResult: (result) {
-          setState(() => _textCtrl.text = result.recognizedWords);
+          if (result.finalResult) {
+            final text = result.recognizedWords;
+            _textCtrl.value = TextEditingValue(
+              text: text,
+              selection: TextSelection.collapsed(offset: text.length),
+            );
+            setState(() => _partialText = '');
+            _analyze(text);
+          } else {
+            setState(() => _partialText = result.recognizedWords);
+          }
         },
         localeId: 'pt-BR',
         cancelOnError: false,
@@ -255,19 +266,31 @@ class _CaptureScreenState extends State<CaptureScreen> with SingleTickerProvider
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: TextField(
-                          controller: _textCtrl,
-                          maxLines: null,
-                          expands: true,
-                          onChanged: _analyze,
-                          style: const TextStyle(color: AppColors.white, fontSize: 16),
-                          decoration: const InputDecoration(
-                            hintText: 'Ou escreva aqui...',
-                            hintStyle: TextStyle(color: AppColors.greyMedium),
-                            border: InputBorder.none,
-                            filled: false,
-                          ),
-                        ),
+                        child: _isListening && _partialText.isNotEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Text(
+                                  _partialText,
+                                  style: const TextStyle(
+                                    color: AppColors.greyMedium,
+                                    fontSize: 16,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              )
+                            : TextField(
+                                controller: _textCtrl,
+                                maxLines: null,
+                                expands: true,
+                                onChanged: _analyze,
+                                style: const TextStyle(color: AppColors.white, fontSize: 16),
+                                decoration: const InputDecoration(
+                                  hintText: 'Ou escreva aqui...',
+                                  hintStyle: TextStyle(color: AppColors.greyMedium),
+                                  border: InputBorder.none,
+                                  filled: false,
+                                ),
+                              ),
                       ),
                       if (_detectedType != null) ...[
                         const Divider(color: AppColors.greyDark),
